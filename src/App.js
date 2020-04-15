@@ -4,6 +4,7 @@ import Bootstrap from 'bootstrap/dist/css/bootstrap.css';
 
 import countryData from './data/countries';
 import statesData from './data/states';
+import citiesData from './data/cities';
 
 class App extends React.Component {
   constructor() {
@@ -11,10 +12,22 @@ class App extends React.Component {
 
     this.state = {
       firstName: '',
+      lastName: '',
       delivery: 'no',
+      payment: 'cash',
+      expDate: '',
+      cardNumber: '',
+      cvv: '',
       countryId: null,
+      stateId: null,
+      cityId: null,
+      userLocation: {
+        latitude: null,
+        longitude: null
+      },
 
       countryStates: [],
+      stateCities: [],
     };
   }
 
@@ -25,9 +38,7 @@ class App extends React.Component {
   }
 
   onCountryChanged(e) {
-    this.setState({
-      countryId: e.target.value,
-    });
+    this.onChange('countryId', e);
 
     let countryStates = [];
     statesData.forEach((state) => {
@@ -38,6 +49,131 @@ class App extends React.Component {
     this.setState({
       countryStates,
     });
+  }
+
+  onStateChanged(e) {
+    this.onChange('stateId', e);
+
+    let stateCities = [];
+    citiesData.forEach((city) => {
+      if (city['state_id'] === +e.target.value) {
+        stateCities.push(city);
+      }
+    });
+    this.setState({
+      stateCities,
+    });
+  }
+
+  detectLocation() {
+    window.navigator.geolocation.getCurrentPosition((data) => {
+      this.setState({
+        userLocation: {
+          latitude: data.coords.latitude,
+          longitude: data.coords.longitude,
+        }
+      })
+    });
+  }
+
+  submit() {
+    let {countryStates, stateCities, ...rest} = this.state;
+    let textData = JSON.stringify(rest);
+    window.localStorage.setItem('CHECKOUT_DATA', textData);
+
+    alert(`Congratulation. Your data: ${textData}`);
+  }
+
+  _renderDeliveryOptions() {
+    return (
+      this.state.delivery === 'yes' ? (
+        <React.Fragment>
+          <div className="form-group">
+            <select
+              className="form-control"
+              onChange={this.onCountryChanged.bind(this)}
+            >
+              <option>... Select country ...</option>
+              {
+                countryData.map((countryData) =>
+                  <option key={countryData['id']} value={countryData['id']}>{countryData['name']}</option>)
+              }
+            </select>
+          </div>
+
+          <div className="form-group">
+            <select
+              className="form-control"
+              onChange={this.onStateChanged.bind(this)}
+            >
+              <option>... Select state ...</option>
+              {
+                this.state.countryStates.map((state) =>
+                  <option key={state['id']} value={state['id']}>{state['name']}</option>)
+              }
+            </select>
+          </div>
+
+          <div className="form-group">
+            <select
+              className="form-control"
+              onChange={this.onChange.bind(this, 'cityId')}
+            >
+              <option>... Select city ...</option>
+              {
+                this.state.stateCities.map((city) =>
+                  <option key={city['id']} value={city['id']}>{city['name']}</option>)
+              }
+            </select>
+          </div>
+
+          <div className="form-group">
+            <button type="button" className="btn btn-warning" onClick={this.detectLocation.bind(this)}>or Detect my
+              location
+            </button>
+          </div>
+        </React.Fragment>
+      ) : null
+    );
+  }
+
+  _renderPayment() {
+    return (
+      this.state.payment === 'cc' ? (
+        <React.Fragment>
+          <div className="form-group">
+            <div className="input-group">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Card Number"
+                onChange={this.onChange.bind(this, 'cardNumber')}
+                value={this.state.cardNumber}
+              />
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Expiration Date"
+                onChange={this.onChange.bind(this, 'expDate')}
+                value={this.state.expDate}
+              />
+              <input
+                type="text"
+                className="form-control"
+                placeholder="CVV"
+                value={this.state.cvv}
+                onChange={this.onChange.bind(this, 'cvv')}
+              />
+            </div>
+          </div>
+        </React.Fragment>
+      ) : null
+    );
+  }
+
+  isFormValid() {
+    return this.state.firstName !== ''
+      && this.state.lastName !== ''
   }
 
   render() {
@@ -93,78 +229,52 @@ class App extends React.Component {
           </div>
         </div>
 
-        <div className="form-group">
-          <select
-            className="form-control"
-            onChange={this.onCountryChanged.bind(this)}
-          >
-            {
-              countryData.map((countryData) => <option value={countryData['id']}>{countryData['name']}</option>)
-            }
-          </select>
-        </div>
-
-        <div className="form-group">
-          <select className="form-control">
-            {
-              this.state.countryStates.map((state) => <option value={state['id']}>{state['name']}</option>)
-            }
-          </select>
-        </div>
-
-        <div className="form-group">
-          <select className="form-control">
-            <option selected>Choose...</option>
-          </select>
-        </div>
+        {
+          this._renderDeliveryOptions()
+        }
 
         <div className="form-group">
           <div className="form-check">
-            <input className="form-check-input" type="radio" name="exampleRadios" id="exampleRadios2" value="option2"/>
-            <label className="form-check-label" htmlFor="exampleRadios2">
+            <input
+              className="form-check-input"
+              type="radio"
+              name="payment"
+              value="cash"
+              onChange={this.onChange.bind(this, 'payment')}
+              checked={this.state.payment === 'cash'}
+            />
+            <label className="form-check-label">
               Payment - cash
             </label>
           </div>
           <div className="form-check">
-            <input className="form-check-input" type="radio" name="exampleRadios" id="exampleRadios1" value="option1"/>
-            <label className="form-check-label" htmlFor="exampleRadios1">
+            <input
+              className="form-check-input"
+              type="radio"
+              name="payment"
+              value="cc"
+              onChange={this.onChange.bind(this, 'payment')}
+              checked={this.state.payment === 'cc'}
+            />
+            <label className="form-check-label">
               Payment - credit card
             </label>
           </div>
         </div>
 
-        <div className="form-group">
-          <div className="input-group">
-            <input type="text" className="form-control" placeholder="Card Number"/>
-            <input type="text" className="form-control" placeholder="Expiration Date"/>
-            <input type="text" className="form-control" placeholder="CVV"/>
-          </div>
-        </div>
+        {
+          this._renderPayment()
+        }
 
         <div className="form-group">
-          <button type="button" className="btn btn-success">Success</button>
+          <button
+            type="button"
+            className="btn btn-success"
+            onClick={this.submit.bind(this)}
+            disabled={!this.isFormValid()}
+          >Submit
+          </button>
         </div>
-
-        {/*First Name*/}
-        {/*Last Name*/}
-        {/*Delivery (radio - yes | no)*/}
-
-        {/*---*/}
-
-        {/*Country*/}
-        {/*State*/}
-        {/*City*/}
-
-        {/*Detect my location*/}
-
-        {/*---*/}
-
-        {/*Payment (radio - cash | card)*/}
-        {/*Card Number*/}
-        {/*Exp Date*/}
-        {/*CVV*/}
-
-        {/*Submit Button*/}
       </div>
     );
   }
